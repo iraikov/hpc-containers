@@ -61,11 +61,11 @@ From: ubuntu:24.04
     # Install Mellanox OFED for Ubuntu 24.04
     echo "Installing Mellanox OFED..."
     MELLANOX_KEY_URL="https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox"
-    MELLANOX_REPO_BASE="https://linux.mellanox.com/public/repo/mlnx_ofed/latest"
+    MELLANOX_REPO_BASE="https://linux.mellanox.com/public/repo/mlnx_ofed/latest-24.07"
 
     # Add Mellanox repository with modern method (gpg keyring)
     wget -qO - ${MELLANOX_KEY_URL} | gpg --dearmor > /usr/share/keyrings/mellanox-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/mellanox-archive-keyring.gpg] ${MELLANOX_REPO_BASE}/ubuntu24.04/ all main" > /etc/apt/sources.list.d/mlnx_ofed.list
+    echo "deb [signed-by=/usr/share/keyrings/mellanox-archive-keyring.gpg] ${MELLANOX_REPO_BASE}/ubuntu24.04/x86_64 ./" > /etc/apt/sources.list.d/mlnx_ofed.list
     apt-get update
     apt-get install -y --no-install-recommends mlnx-ofed-hpc ucx
 

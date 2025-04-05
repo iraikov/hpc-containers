@@ -75,18 +75,19 @@ From: ubuntu:24.04
     # Activate the virtual environment
     . /opt/venv/bin/activate
 
-    # Install packages using pip (inside the venv)
+    # Install packages usinghttps://linux.mellanox.com/public/repo/mlnx_ofed/latest-24.07/ubuntu24.04/ pip (inside the venv)
     pip3 install setuptools wheel scipy numpy sympy cython scikit-learn h5py click jinja2 pyyaml
     pip3 install treverhines-rbf pydantic matplotlib quantities machinable networkx hatchling uv
 
     # Install Mellanox OFED for Ubuntu 24.04
     echo "Installing Mellanox OFED..."
     MELLANOX_KEY_URL="https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox"
-    MELLANOX_REPO_BASE="https://linux.mellanox.com/public/repo/mlnx_ofed/latest"
+    MELLANOX_REPO_BASE="https://linux.mellanox.com/public/repo/mlnx_ofed/latest-24.07"
 
     # Add Mellanox repository with gpg keyring
     wget -qO - ${MELLANOX_KEY_URL} | gpg --dearmor > /usr/share/keyrings/mellanox-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/mellanox-archive-keyring.gpg] ${MELLANOX_REPO_BASE}/ubuntu24.04/ all main" > /etc/apt/sources.list.d/mlnx_ofed.list
+    echo "deb [signed-by=/usr/share/keyrings/mellanox-archive-keyring.gpg] ${MELLANOX_REPO_BASE}/ubuntu24.04/x86_64 ./" > /etc/apt/sources.list.d/mlnx_ofed.list
+
     apt-get update
     apt-get install -y --no-install-recommends mlnx-ofed-hpc ucx
 
