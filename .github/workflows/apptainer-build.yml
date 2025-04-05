@@ -16,7 +16,7 @@ jobs:
         run: |
           singularity build tacc_ubuntu22_impi21_python3.12.sif tacc_ubuntu22_impi21_python3.12.def
       - name: Upload container as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: apptainer-container
           path: tacc_ubuntu22_impi21_python3.12.sif
