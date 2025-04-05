@@ -1,0 +1,70 @@
+Bootstrap: docker
+From: nvcr.io/nvidia/nvhpc:25.1-devel-cuda_multi-ubuntu24.04
+
+%post
+    # Update package list and install development tools
+    apt-get update
+    
+    apt-get install -y --no-install-recommends \
+    	less \
+        apt-utils \
+        fakeroot \
+        build-essential \
+        cmake \
+        wget \
+        git \
+	bison \
+	flex \
+	libfl-dev \
+	libgl-dev \
+	libreadline-dev \
+	libopenmpi-dev \
+	libhdf5-openmpi-dev \
+	hdf5-tools \
+	python3 \
+        libpython3.12-dev \
+	python3-pip \
+	python3-venv
+
+
+    apt-get install -y --no-install-recommends libboost-dev
+    apt-get install -y --no-install-recommends libboost-thread-dev
+    apt-get install -y --no-install-recommends libboost-python-dev
+
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+	
+    # Create the virtual environment
+    python3 -m venv /opt/venv
+
+    # Activate the virtual environment
+    . /opt/venv/bin/activate
+
+    # Install packages using pip (inside the venv)
+    pip3 install setuptools wheel scipy numpy sympy cython scikit-learn h5py click jinja2 pyyaml
+    pip3 install treverhines-rbf pydantic matplotlib quantities machinable networkx hatchling uv
+
+    MPI4PY_BUILD_BACKEND=scikit-build-core pip3 install mpi4py
+    
+    export CUDA_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/cuda/11.8
+    wget https://files.pythonhosted.org/packages/15/31/12640e87fcc6fc42468dfbeb38f9c0fd7b0a25bf9e6d9e0a7609f915dd18/pycuda-2025.1.tar.gz
+    
+    tar zxf pycuda-2025.1.tar.gz
+    cd pycuda-2025.1
+    ./configure.py --boost-python-libname=boost_python312 \
+                   --boost-thread-libname=boost_thread \
+		   --curand-lib-dir=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/math_libs/12.6/targets/x86_64-linux/lib \
+		   --cuda-root=$CUDA_ROOT --cuda-enable-gl
+    make && make install
+    cd ..
+    rm -rf pycuda-2025.1.tar.gz pycuda-2025.1
+
+
+    # Deactivate the virtual environment (optional, but good practice)
+    deactivate
+
+%environment
+    # Set PATH to include the virtual environment's bin directory
+    export PATH="/opt/venv/bin:$PATH"
+    # Set CUDA_ROOT to CUDA installation directory
+    export CUDA_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/cuda/11.8/

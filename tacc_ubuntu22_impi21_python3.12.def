@@ -1,0 +1,169 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%labels
+    MAINTAINER Ivan Raikov
+    VERSION 1.0
+
+%environment
+    # Configure environment for Intel MPI 2021
+    export I_MPI_LIBRARY_KIND=release_mt
+    export I_MPI_OFI_LIBRARY_INTERNAL=1
+    export I_MPI_REMOVED_VAR_WARNING=0
+    export I_MPI_VAR_CHECK_SPELLING=0
+    # Source Intel oneAPI environment if available
+    if [ -f /opt/intel/oneapi/setvars.sh ]; then
+        . /opt/intel/oneapi/setvars.sh > /dev/null
+    fi
+    # Set PATH to include the virtual environment's bin directory
+    export PATH="/opt/venv/bin:$PATH"
+
+%setup
+    # Commands to be executed on the host system
+
+%files
+    # Files to be copied from the host system to the container
+    # Uncomment and modify if you have the benchmarks script
+    # extras/install_benchmarks.sh /tmp/install_benchmarks.sh
+
+%post
+    # Update system and install basic dependencies
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        gnupg2 \
+        apt-utils \
+        fakeroot \
+        ca-certificates \
+        cmake \
+        wget \
+        curl \
+        gfortran \
+        bison \
+        flex \
+        git \
+        less \
+      	libfl-dev \
+	libgl-dev \
+	libreadline-dev \
+        libmpich-dev \
+	hdf5-tools \
+        libhdf5-mpich-dev \
+        libibverbs-dev \
+        libnuma-dev \
+        libibmad-dev \
+        libibumad-dev \
+        librdmacm-dev \
+        libxml2-dev \
+        libfabric-dev \
+      	python3 \
+        libpython3.12-dev \
+	python3-pip \
+	python3-venv
+
+
+    apt-get install -y --no-install-recommends libboost-dev
+    apt-get install -y --no-install-recommends libboost-thread-dev
+    apt-get install -y --no-install-recommends libboost-python-dev
+
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+	
+    # Create the virtual environment
+    python3 -m venv /opt/venv
+
+    # Activate the virtual environment
+    . /opt/venv/bin/activate
+
+    # Install packages using pip (inside the venv)
+    pip3 install setuptools wheel scipy numpy sympy cython scikit-learn h5py click jinja2 pyyaml
+    pip3 install treverhines-rbf pydantic matplotlib quantities machinable networkx hatchling uv
+
+    # Install Mellanox OFED for Ubuntu 22.04
+    echo "Installing Mellanox OFED..."
+    MELLANOX_KEY_URL="https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox"
+    MELLANOX_REPO_BASE="https://linux.mellanox.com/public/repo/mlnx_ofed/latest"
+
+    # Add Mellanox repository with gpg keyring
+    wget -qO - ${MELLANOX_KEY_URL} | gpg --dearmor > /usr/share/keyrings/mellanox-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/mellanox-archive-keyring.gpg] ${MELLANOX_REPO_BASE}/ubuntu22.04/ all main" > /etc/apt/sources.list.d/mlnx_ofed.list
+    apt-get update
+    apt-get install -y --no-install-recommends mlnx-ofed-hpc ucx
+
+    # Install PSM2
+    echo "Installing PSM2..."
+    export PSM=PSM2
+    export PSMV=11.2.230
+    export PSMD=opa-psm2-${PSM}_${PSMV}
+    curl -L https://github.com/cornelisnetworks/opa-psm2/archive/refs/tags/${PSM}_${PSMV}.tar.gz | tar -xzf -
+    cd ${PSMD}
+    make PSM_AVX=1 -j $(nproc --all 2>/dev/null || echo 2)
+    make LIBDIR=/usr/lib/x86_64-linux-gnu install
+    cd / && rm -rf ${PSMD}
+
+    # Install Intel oneAPI and MPI 2021
+    echo "Installing Intel oneAPI and MPI 2021..."
+    wget -qO - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor > /usr/share/keyrings/oneapi-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" > /etc/apt/sources.list.d/oneAPI.list
+    apt-get update
+    apt-get install -y intel-oneapi-mpi intel-oneapi-mpi-devel
+
+    # Create script to source Intel oneAPI environment
+    cat > /etc/profile.d/intel_oneapi.sh << 'EOF'
+#!/bin/bash
+if [ -f /opt/intel/oneapi/setvars.sh ]; then
+    . /opt/intel/oneapi/setvars.sh > /dev/null
+fi
+EOF
+    chmod +x /etc/profile.d/intel_oneapi.sh
+
+    # Source Intel oneAPI environment for building MPI4PY
+    source /opt/intel/oneapi/setvars.sh
+
+    # Build MPI4PY
+    MPI4PY_BUILD_BACKEND=scikit-build-core pip3 install mpi4py
+
+    # Deactivate the virtual environment
+    deactivate
+
+    # Source Intel oneAPI environment for building hello world
+    source /opt/intel/oneapi/setvars.sh
+
+    # Create hello world test
+    cat > /tmp/hello.c << EOF
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char **argv) {
+    int rank, size;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    
+    printf("Hello world from rank %d of %d\\n", rank, size);
+    
+    MPI_Finalize();
+    return 0;
+}
+EOF
+    
+    # Compile hello world with Intel MPI
+    mpiicc /tmp/hello.c -o /usr/local/bin/hellow
+    rm /tmp/hello.c
+
+    # final clean-up
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%test
+    # Source Intel oneAPI environment
+    source /opt/intel/oneapi/setvars.sh
+    # Test MPI installation
+    mpirun -n 2 hellow
+
+%runscript
+    # Source Intel oneAPI environment and run the provided command
+    source /opt/intel/oneapi/setvars.sh
+    exec "$@"
