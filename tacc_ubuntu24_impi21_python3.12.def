@@ -69,15 +69,6 @@ From: ubuntu:24.04
     apt-get clean
     rm -rf /var/lib/apt/lists/*
 	
-    # Create the virtual environment
-    python3 -m venv /opt/venv
-
-    # Activate the virtual environment
-    . /opt/venv/bin/activate
-
-    # Install packages usinghttps://linux.mellanox.com/public/repo/mlnx_ofed/latest-24.07/ubuntu24.04/ pip (inside the venv)
-    pip3 install setuptools wheel scipy numpy sympy cython scikit-learn h5py click jinja2 pyyaml
-    pip3 install treverhines-rbf pydantic matplotlib quantities machinable networkx hatchling uv
 
     # Install Mellanox OFED for Ubuntu 24.04
     echo "Installing Mellanox OFED..."
@@ -119,7 +110,17 @@ EOF
     chmod +x /etc/profile.d/intel_oneapi.sh
 
     # Source Intel oneAPI environment for building MPI4PY
-    source /opt/intel/oneapi/setvars.sh
+    . /opt/intel/oneapi/setvars.sh
+
+    # Create the virtual environment
+    python3 -m venv /opt/venv
+
+    # Activate the virtual environment
+    . /opt/venv/bin/activate
+
+    # Install Python packages using pip (inside the venv)
+    pip3 install setuptools wheel scipy numpy sympy cython scikit-learn h5py click jinja2 pyyaml
+    pip3 install treverhines-rbf pydantic matplotlib quantities machinable networkx hatchling uv
 
     # Build MPI4PY
     MPI4PY_BUILD_BACKEND=scikit-build-core pip3 install mpi4py
@@ -128,7 +129,7 @@ EOF
     deactivate
 
     # Source Intel oneAPI environment for building hello world
-    source /opt/intel/oneapi/setvars.sh
+    . /opt/intel/oneapi/setvars.sh
 
     # Create hello world test
     cat > /tmp/hello.c << EOF
@@ -160,11 +161,11 @@ EOF
 
 %test
     # Source Intel oneAPI environment
-    source /opt/intel/oneapi/setvars.sh
+    . /opt/intel/oneapi/setvars.sh
     # Test MPI installation
     mpirun -n 2 hellow
 
 %runscript
     # Source Intel oneAPI environment and run the provided command
-    source /opt/intel/oneapi/setvars.sh
+    . /opt/intel/oneapi/setvars.sh
     exec "$@"

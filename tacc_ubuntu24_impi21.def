@@ -97,7 +97,7 @@ EOF
     chmod +x /etc/profile.d/intel_oneapi.sh
 
     # Source Intel oneAPI environment for building hello world
-    source /opt/intel/oneapi/setvars.sh
+    . /opt/intel/oneapi/setvars.sh
 
     # Create hello world test
     cat > /tmp/hello.c << EOF
@@ -129,11 +129,11 @@ EOF
 
 %test
     # Source Intel oneAPI environment
-    source /opt/intel/oneapi/setvars.sh
+    . /opt/intel/oneapi/setvars.sh
     # Test MPI installation
     mpirun -n 2 hellow
 
 %runscript
     # Source Intel oneAPI environment and run the provided command
-    source /opt/intel/oneapi/setvars.sh
+    . /opt/intel/oneapi/setvars.sh
     exec "$@"
