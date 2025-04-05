@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: ubuntu:22.04
+From: ubuntu:24.04
 
 %labels
     MAINTAINER Ivan Raikov
@@ -15,8 +15,6 @@ From: ubuntu:22.04
     if [ -f /opt/intel/oneapi/setvars.sh ]; then
         . /opt/intel/oneapi/setvars.sh > /dev/null
     fi
-    # Set PATH to include the virtual environment's bin directory
-    export PATH="/opt/venv/bin:$PATH"
 
 %setup
     # Commands to be executed on the host system
@@ -55,38 +53,19 @@ From: ubuntu:22.04
         libibumad-dev \
         librdmacm-dev \
         libxml2-dev \
-        libfabric-dev \
-      	python3 \
-        libpython3.12-dev \
-	python3-pip \
-	python3-venv
-
+        libfabric-dev
 
     apt-get install -y --no-install-recommends libboost-dev
     apt-get install -y --no-install-recommends libboost-thread-dev
-    apt-get install -y --no-install-recommends libboost-python-dev
 
-    apt-get clean
-    rm -rf /var/lib/apt/lists/*
-	
-    # Create the virtual environment
-    python3 -m venv /opt/venv
-
-    # Activate the virtual environment
-    . /opt/venv/bin/activate
-
-    # Install packages using pip (inside the venv)
-    pip3 install setuptools wheel scipy numpy sympy cython scikit-learn h5py click jinja2 pyyaml
-    pip3 install treverhines-rbf pydantic matplotlib quantities machinable networkx hatchling uv
-
-    # Install Mellanox OFED for Ubuntu 22.04
+    # Install Mellanox OFED for Ubuntu 24.04
     echo "Installing Mellanox OFED..."
     MELLANOX_KEY_URL="https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox"
     MELLANOX_REPO_BASE="https://linux.mellanox.com/public/repo/mlnx_ofed/latest"
 
-    # Add Mellanox repository with gpg keyring
+    # Add Mellanox repository with modern method (gpg keyring)
     wget -qO - ${MELLANOX_KEY_URL} | gpg --dearmor > /usr/share/keyrings/mellanox-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/mellanox-archive-keyring.gpg] ${MELLANOX_REPO_BASE}/ubuntu22.04/ all main" > /etc/apt/sources.list.d/mlnx_ofed.list
+    echo "deb [signed-by=/usr/share/keyrings/mellanox-archive-keyring.gpg] ${MELLANOX_REPO_BASE}/ubuntu24.04/ all main" > /etc/apt/sources.list.d/mlnx_ofed.list
     apt-get update
     apt-get install -y --no-install-recommends mlnx-ofed-hpc ucx
 
@@ -117,15 +96,6 @@ fi
 EOF
     chmod +x /etc/profile.d/intel_oneapi.sh
 
-    # Source Intel oneAPI environment for building MPI4PY
-    source /opt/intel/oneapi/setvars.sh
-
-    # Build MPI4PY
-    MPI4PY_BUILD_BACKEND=scikit-build-core pip3 install mpi4py
-
-    # Deactivate the virtual environment
-    deactivate
-
     # Source Intel oneAPI environment for building hello world
     source /opt/intel/oneapi/setvars.sh
 
@@ -153,7 +123,7 @@ EOF
     mpiicc /tmp/hello.c -o /usr/local/bin/hellow
     rm /tmp/hello.c
 
-    # final clean-up
+    # Clean up
     apt-get clean
     rm -rf /var/lib/apt/lists/*
 
