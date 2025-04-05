@@ -91,13 +91,13 @@ From: ubuntu:24.04
     cat > /etc/profile.d/intel_oneapi.sh << 'EOF'
 #!/bin/bash
 if [ -f /opt/intel/oneapi/setvars.sh ]; then
-    . /opt/intel/oneapi/setvars.sh > /dev/null
+    source /opt/intel/oneapi/setvars.sh > /dev/null
 fi
 EOF
     chmod +x /etc/profile.d/intel_oneapi.sh
 
     # Source Intel oneAPI environment for building hello world
-    . /opt/intel/oneapi/setvars.sh
+    bash -c 'source /opt/intel/oneapi/setvars.sh'
 
     # Create hello world test
     cat > /tmp/hello.c << EOF

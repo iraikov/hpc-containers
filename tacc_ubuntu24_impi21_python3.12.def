@@ -123,7 +123,7 @@ EOF
     pip3 install treverhines-rbf pydantic matplotlib quantities machinable networkx hatchling uv
 
     # Build MPI4PY
-    MPI4PY_BUILD_BACKEND=scikit-build-core pip3 install mpi4py
+    MPI4PY_BUILD_MPICC=mpiicc pip3 install mpi4py
 
     # Deactivate the virtual environment
     deactivate
