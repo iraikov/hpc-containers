@@ -14,10 +14,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Build Container
         run: |
-          singularity build tacc_ubuntu22_impi21_python3.12.sif tacc_ubuntu22_impi21_python3.12.def
+          singularity build tacc_ubuntu24_impi21_python3.12.sif tacc_ubuntu24_impi21_python3.12.def
       - name: Upload container as artifact
         uses: actions/upload-artifact@v4
         with:
           name: apptainer-container
-          path: tacc_ubuntu22_impi21_python3.12.sif
+          path: tacc_ubuntu24_impi21_python3.12.sif
           
