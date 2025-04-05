@@ -1,0 +1,23 @@
+name: Apptainer Build
+on: [push, pull_request]
+jobs:
+  build-container:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    container:
+      image: quay.io/singularity/singularity:v4.1.0
+      options: --privileged
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Build Container
+        run: |
+          singularity build tacc_ubuntu22_impi21_python3.12.sif tacc_ubuntu22_impi21_python3.12.def
+      - name: Upload container as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: apptainer-container
+          path: tacc_ubuntu22_impi21_python3.12.sif
+          
