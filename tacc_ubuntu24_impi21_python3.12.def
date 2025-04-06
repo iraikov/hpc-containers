@@ -121,9 +121,27 @@ EOF
     # Install Python packages using pip (inside the venv)
     pip3 install setuptools wheel scipy numpy sympy cython scikit-learn h5py click jinja2 pyyaml
     pip3 install treverhines-rbf pydantic matplotlib quantities machinable networkx hatchling uv
+    pip3 cache purge
 
     # Build MPI4PY
-    MPI4PY_BUILD_MPICC=mpiicc pip3 install mpi4py
+    # Download and patch mpi4py
+    cd /tmp
+    curl -L https://github.com/mpi4py/mpi4py/releases/download/4.0.3/mpi4py-4.0.3.tar.gz | tar -xzf -    
+    cd mpi4py-4.0.3
+    # import warnings import in mpiconfig.py
+    sed -i '1s/^/import warnings\n/' conf/mpiconfig.py
+    # Replace self.log.warning with a warnings.warn call using f-strings
+    sed -i 's/self\.log\.warning(/warnings.warn(/g' conf/mpiconfig.py
+    MPICC=mpicc python3 setup.py install
+    cd
+    rm -rf /tmp/mpi4py*
+
+# Add the warnings import at the top of the file
+sed -i '1s/^/import warnings\n/' conf/mpiconfig.py
+
+# Replace the problematic line with a warnings.warn call using f-strings
+sed -i 's/self\.log\.warning("warning: %s='\''%s'\'' not found", name, cmd)/warnings.warn(f"warning: {name}=\'{cmd}\' not found")/g' conf/mpiconfig.py
+
 
     # Deactivate the virtual environment
     deactivate
