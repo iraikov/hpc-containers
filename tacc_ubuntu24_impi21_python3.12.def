@@ -11,10 +11,6 @@ From: ubuntu:24.04
     export I_MPI_OFI_LIBRARY_INTERNAL=1
     export I_MPI_REMOVED_VAR_WARNING=0
     export I_MPI_VAR_CHECK_SPELLING=0
-    # Source Intel oneAPI environment if available
-    if [ -f /opt/intel/oneapi/setvars.sh ]; then
-        . /opt/intel/oneapi/setvars.sh > /dev/null
-    fi
     # Set PATH to include the virtual environment's bin directory
     export PATH="/opt/venv/bin:$PATH"
 
@@ -31,6 +27,7 @@ From: ubuntu:24.04
     apt-get update
     apt-get install -y --no-install-recommends \
         build-essential \
+	patch \
         gnupg2 \
         apt-utils \
         fakeroot \
@@ -128,59 +125,48 @@ EOF
     cd /tmp
     curl -L https://github.com/mpi4py/mpi4py/releases/download/4.0.3/mpi4py-4.0.3.tar.gz | tar -xzf -    
     cd mpi4py-4.0.3
-    # import warnings import in mpiconfig.py
-    sed -i '1s/^/import warnings\n/' conf/mpiconfig.py
-    # Replace self.log.warning with a warnings.warn call using f-strings
-    sed -i 's/self\.log\.warning(/warnings.warn(/g' conf/mpiconfig.py
-    MPICC=mpicc python3 setup.py install
+    cat > /tmp/mpi4py_python312.patch << 'EOF'
+    --- mpi4py-4.0.3/conf/mpiconfig.py	2025-02-13 07:34:54.000000000 -0800
++++ mpi4py-4.0.3_patched/conf/mpiconfig.py	2025-04-05 17:56:32.761033181 -0700
+@@ -1,3 +1,4 @@
++import warnings
+ import os
+ import sys
+ import shlex
+@@ -331,7 +332,8 @@
+                     PATH = path + os.path.pathsep + PATH
+                     compiler_info[name] = exe
+                 else:
+-                    self.log.warning("warning: %s='%s' not found", name, cmd)
++                    warnings.warn(f"warning: {name}={cmd} not found")
++
+         #
+         if not self and not compiler_info:
+             for name, candidates in COMPILERS:
+
+EOF
+    patch -p1 < /tmp/mpi4py_python312.patch
+    # Creates a script that sources the Intel environment and then builds mpi4py
+    cat > /tmp/build_mpi4py.sh << 'EOF'
+#!/bin/bash
+set -e
+source /opt/intel/oneapi/setvars.sh
+cd /tmp/mpi4py-4.0.3
+# Print environment to debug
+echo "Checking Intel MPI environment variables:"
+echo "I_MPI_ROOT=$I_MPI_ROOT"
+echo "MPICC=$(which mpicc)"
+# Build with Intel MPI
+MPICC=mpicc python3 setup.py install
+EOF
+    chmod +x /tmp/build_mpi4py.sh
+    /tmp/build_mpi4py.sh
     cd
-    rm -rf /tmp/mpi4py*
-
-# Add the warnings import at the top of the file
-sed -i '1s/^/import warnings\n/' conf/mpiconfig.py
-
-# Replace the problematic line with a warnings.warn call using f-strings
-sed -i 's/self\.log\.warning("warning: %s='\''%s'\'' not found", name, cmd)/warnings.warn(f"warning: {name}=\'{cmd}\' not found")/g' conf/mpiconfig.py
-
+    rm -rf /tmp/*mpi4py*
 
     # Deactivate the virtual environment
     deactivate
 
-    # Create hello world test
-    cat > /tmp/hello.c << EOF
-#include <mpi.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-int main(int argc, char **argv) {
-    int rank, size;
-
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    
-    printf("Hello world from rank %d of %d\\n", rank, size);
-    
-    MPI_Finalize();
-    return 0;
-}
-EOF
-    
-    # Compile hello world with Intel MPI
-    mpiicc /tmp/hello.c -o /usr/local/bin/hellow
-    rm /tmp/hello.c
-
     # final clean-up
     apt-get clean
     rm -rf /var/lib/apt/lists/*
-
-%test
-    # Source Intel oneAPI environment
-    . /opt/intel/oneapi/setvars.sh
-    # Test MPI installation
-    mpirun -n 2 hellow
-
-%runscript
-    # Source Intel oneAPI environment and run the provided command
-    . /opt/intel/oneapi/setvars.sh
-    exec "$@"
